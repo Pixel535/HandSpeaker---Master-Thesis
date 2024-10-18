@@ -1,5 +1,6 @@
 import tkinter as tk
 from GUI_AddDataPage import AddDataPage
+from GUI_AddDataVideoPage import AddDataVideoPage
 from GUI_MainPage import MainPage
 from GUI_Text_to_SL_Page import TextToSLPage
 
@@ -26,6 +27,11 @@ class GUI:
     def show_add_data_page(self):
         self.hide_current_page()
         self.current_page = AddDataPage(self.window, self, self.data_processor)
+        self.current_page.show()
+
+    def show_add_data_video_page(self):
+        self.hide_current_page()
+        self.current_page = AddDataVideoPage(self.window, self, self.data_processor)
         self.current_page.show()
 
     def show_text_to_sl_page(self):

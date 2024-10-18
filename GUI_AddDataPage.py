@@ -27,8 +27,6 @@ class AddDataPage(Page):
         self.recording = False
         self.during_recording = False
         self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
-        self.ret = None
-        self.image = None
 
         parent.geometry("1150x700")
 
@@ -46,21 +44,21 @@ class AddDataPage(Page):
         self.frame_right = tk.Frame(self.frame)
         self.frame_right.grid(row=0, column=1, padx=10, pady=10)
 
-        self.label_info_1 = tk.Label(self.frame_right, text="Write word/sign you want to add to DataSet:")
+        self.label_info_1 = tk.Label(self.frame_right, text="Write word/sign you want to add to DataSet:", font=("Helvetica", 9, 'bold'))
         self.label_info_1.pack()
         self.warning_word = tk.Label(self.frame_right, text="", fg="red")
         self.warning_word.pack()
         self.entry_word = tk.Entry(self.frame_right)
         self.entry_word.pack()
 
-        self.label_info_2 = tk.Label(self.frame_right, text="Define the number of sequences to be recorded for this word/sign:")
+        self.label_info_2 = tk.Label(self.frame_right, text="Define the number of sequences to be recorded for this word/sign:", font=("Helvetica", 9, 'bold'))
         self.label_info_2.pack(pady=(20, 0))
         self.warning_sequences = tk.Label(self.frame_right, text="", fg="red")
         self.warning_sequences.pack()
         self.entry_sequences = tk.Entry(self.frame_right)
         self.entry_sequences.pack()
 
-        self.label_info_3 = tk.Label(self.frame_right, text="Define the number of frames to be recorded for this word/sign:")
+        self.label_info_3 = tk.Label(self.frame_right, text="Define the number of frames to be recorded for this word/sign:", font=("Helvetica", 9, 'bold'))
         self.label_info_3.pack(pady=(20, 0))
         self.warning_frames = tk.Label(self.frame_right, text="", fg="red")
         self.warning_frames.pack()
@@ -84,6 +82,9 @@ class AddDataPage(Page):
 
         self.button_camera = tk.Button(self.frame_bottom, text="Open Camera", command=self.toggle_camera)
         self.button_camera.pack(side=tk.LEFT, padx=5)
+
+        self.button_load_video = tk.Button(self.frame_bottom, text="Load Video", command=self.load_video_action)
+        self.button_load_video.pack(side=tk.LEFT, padx=5)
 
         self.button_home = tk.Button(self.frame_bottom, text="Home", command=self.home_action)
         self.button_home.pack(side=tk.LEFT, padx=5)
@@ -127,13 +128,13 @@ class AddDataPage(Page):
 
     def update_frame(self):
         if self.running:
-            self.ret, self.image = self.cap.read()
-            if self.ret:
+            ret, image = self.cap.read()
+            if ret:
                 if self.placeholder_label.winfo_ismapped():
                     self.button_camera.config(text="Close Camera", state=tk.NORMAL)
                     self.placeholder_label.pack_forget()
                     self.video_label.pack()
-                results, image = self.data_processor.image_processing(self.image, self.holistic_model)
+                results, image = self.data_processor.image_processing(image, self.holistic_model)
                 self.data_processor.draw_landmarks(image, results)
                 if self.recording:
                     if self.during_recording:
@@ -159,7 +160,7 @@ class AddDataPage(Page):
             else:
                 if not self.placeholder_label.winfo_ismapped():
                     self.placeholder_label.pack()
-            self.video_label.after(30, self.update_frame)
+            self.video_label.after(5, self.update_frame)
         else:
             self.video_label.config(image="", text="")
 
@@ -217,6 +218,8 @@ class AddDataPage(Page):
 
                 existing_files = os.listdir(self.video_target_path)
                 video_count = len(existing_files)
+                existing_keypoint_files = os.listdir(self.keypoint_target_path)
+                keypoint_files_count = len(existing_keypoint_files)
 
                 video_file_name = f'{self.word}_{video_count + 1}.mp4'
                 video_file_path = os.path.join(self.video_target_path, video_file_name)
@@ -225,16 +228,18 @@ class AddDataPage(Page):
                 out = cv2.VideoWriter(video_file_path, fourcc, 20.0, (self.camera_current_width, self.camera_current_height))
 
                 for frame_num in range(num_frames):
-                    if not self.ret or not self.recording:
+                    ret, image = self.cap.read()
+                    if not ret or not self.recording:
                         break
 
-                    out.write(self.image)
+                    out.write(image)
 
-                    results, image = self.data_processor.image_processing(self.image, self.holistic_model)
+                    results, image = self.data_processor.image_processing(image, self.holistic_model)
                     self.data_processor.draw_landmarks(image, results)
                     keypoints = self.data_processor.keypoint_extraction(results)
+                    print(keypoints)
 
-                    frame_path = os.path.join(self.keypoint_target_path, f'w_{self.word}_{video_count + 1}_s_{self.current_sequence}_f_{frame_num}')
+                    frame_path = os.path.join(self.keypoint_target_path, f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{frame_num}')
                     np.save(frame_path, keypoints)
                     self.current_frame = frame_num
 
@@ -266,6 +271,11 @@ class AddDataPage(Page):
         self.stop_camera()
         self.stop_action()
         self.controller.show_main_page()
+
+    def load_video_action(self):
+        self.stop_camera()
+        self.stop_action()
+        self.controller.show_add_data_video_page()
 
     def reset_camera_settings(self):
         self.entry_word.config(state=tk.NORMAL)
