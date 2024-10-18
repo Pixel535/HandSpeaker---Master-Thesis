@@ -1,0 +1,1 @@
+----- Here is a directory to Dataset's Sign Language Videos used in Project (From Kaggle Link in Read.me) -----
