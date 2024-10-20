@@ -12,6 +12,8 @@ class AddDataPage(Page):
     def __init__(self, parent, controller, data_processor):
         super().__init__(parent, controller)
 
+        self.current_frame = None
+        self.current_sequence = None
         self.cap = None
         self.running = False
         self.max_camera_width = 800
@@ -123,7 +125,7 @@ class AddDataPage(Page):
                 self.cap = None
                 self.button_camera.config(state=tk.NORMAL)
 
-        threading.Thread(target=camera_thread).start()
+        threading.Thread(target=camera_thread, daemon=True).start()
 
 
     def update_frame(self):
@@ -237,7 +239,6 @@ class AddDataPage(Page):
                     results, image = self.data_processor.image_processing(image, self.holistic_model)
                     self.data_processor.draw_landmarks(image, results)
                     keypoints = self.data_processor.keypoint_extraction(results)
-                    print(keypoints)
 
                     frame_path = os.path.join(self.keypoint_target_path, f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{frame_num}')
                     np.save(frame_path, keypoints)
@@ -254,7 +255,7 @@ class AddDataPage(Page):
                 self.during_recording = False
                 self.button_next.config(state=tk.NORMAL)
 
-        threading.Thread(target=recording_thread).start()
+        threading.Thread(target=recording_thread, daemon=True).start()
 
 
     def next_sequence(self):

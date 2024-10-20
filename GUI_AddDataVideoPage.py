@@ -103,7 +103,7 @@ class AddDataVideoPage(Page):
             self.selected_file_name.config(text=os.path.basename(file_path))
             def load_file_thread():
                 self.load_video(file_path)
-            threading.Thread(target=load_file_thread).start()
+            threading.Thread(target=load_file_thread, daemon=True).start()
 
     def load_video(self, file_path):
         self.cap = cv2.VideoCapture(file_path)
@@ -148,8 +148,10 @@ class AddDataVideoPage(Page):
 
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
+            self.button_choose_file.config(state=tk.DISABLED)
             self.play_video()
             self.save_keypoints()
+
 
 
     def save_keypoints(self):
@@ -164,21 +166,23 @@ class AddDataVideoPage(Page):
 
             for frame_num in range(num_frames):
                 ret, image = self.cap.read()
-                if not ret:
+                if not ret or not self.running:
                     break
 
                 results, image_res = self.data_processor.image_processing(image, self.holistic_model)
                 self.data_processor.draw_landmarks(image_res, results)
                 keypoints = self.data_processor.keypoint_extraction(results)
 
-                print(keypoints)
-
                 frame_path = os.path.join(self.keypoint_target_path, f'w_{self.word}_{keypoint_files_count + 1}_s_1_f_{frame_num}')
+                print(self.keypoint_target_path, frame_path)
                 np.save(frame_path, keypoints)
 
             self.placeholder_label.config(text="Your data has been added to Dataset! Load another video!")
             self.stop_video()
-        threading.Thread(target=recording_thread).start()
+            self.button_choose_file.config(state=tk.NORMAL)
+
+
+        threading.Thread(target=recording_thread, daemon=True).start()
 
     def play_video(self):
         def play_video_thread():
@@ -217,5 +221,6 @@ class AddDataVideoPage(Page):
                         self.video_label.after(5, lambda: None)
                     else:
                         self.running = False
+            self.running = False
 
-        threading.Thread(target=play_video_thread).start()
+        threading.Thread(target=play_video_thread, daemon=True).start()
