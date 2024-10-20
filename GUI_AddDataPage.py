@@ -218,9 +218,19 @@ class AddDataPage(Page):
             if self.current_sequence < num_sequences:
                 self.during_recording = True
 
+                existing_video_folders = [d for d in os.listdir(self.keypoint_target_path) if os.path.isdir(os.path.join(self.keypoint_target_path, d))]
+                folder_count = len(existing_video_folders) + 1
+
+                sequence_folder_name = f'video_{folder_count}'
+                sequence_folder_path = os.path.join(self.keypoint_target_path, sequence_folder_name)
+
+                if not os.path.exists(sequence_folder_path):
+                    os.makedirs(sequence_folder_path)
+
                 existing_files = os.listdir(self.video_target_path)
                 video_count = len(existing_files)
-                existing_keypoint_files = os.listdir(self.keypoint_target_path)
+
+                existing_keypoint_files = os.listdir(sequence_folder_path)
                 keypoint_files_count = len(existing_keypoint_files)
 
                 video_file_name = f'{self.word}_{video_count + 1}.mp4'
@@ -240,7 +250,7 @@ class AddDataPage(Page):
                     self.data_processor.draw_landmarks(image, results)
                     keypoints = self.data_processor.keypoint_extraction(results)
 
-                    frame_path = os.path.join(self.keypoint_target_path, f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{frame_num}')
+                    frame_path = os.path.join(sequence_folder_path, f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{frame_num}')
                     np.save(frame_path, keypoints)
                     self.current_frame = frame_num
 

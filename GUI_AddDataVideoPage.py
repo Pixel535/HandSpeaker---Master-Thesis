@@ -4,6 +4,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import threading
+from tkinter import ttk
 from GUI_Page import Page
 from PIL import Image, ImageTk
 from tkinter import filedialog
@@ -17,7 +18,6 @@ class AddDataVideoPage(Page):
         self.selected_file_path = None
         self.max_video_width = 800
         self.max_video_height = 700
-        self.running = False
         self.cap = None
         self.sequences = 1
         self.frames = None
@@ -67,6 +67,10 @@ class AddDataVideoPage(Page):
         self.button_add_to_dataset = tk.Button(self.frame_right, text="Add to Dataset", command=self.add_to_dataset_action)
         self.button_add_to_dataset.pack(pady=5)
 
+        self.progress = ttk.Progressbar(self.frame_right, orient="horizontal", length=300, mode="determinate")
+        self.progress.pack(pady=10)
+        self.progress.pack_forget()
+
         # ----- Button Frame -----
         self.frame_bottom = tk.Frame(self.frame)
         self.frame_bottom.grid(row=1, columnspan=2, pady=10)
@@ -86,7 +90,6 @@ class AddDataVideoPage(Page):
         self.controller.show_add_data_page()
 
     def stop_video(self):
-        self.running = False
         if self.cap:
             self.cap.release()
         self.selected_file_name.config(text="")
@@ -149,51 +152,60 @@ class AddDataVideoPage(Page):
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
             self.button_choose_file.config(state=tk.DISABLED)
+            self.button_add_to_dataset.config(state=tk.DISABLED)
             self.play_video()
-            self.save_keypoints()
-
-
 
     def save_keypoints(self):
-        def recording_thread():
-            if not os.path.exists(self.keypoint_target_path):
-                os.makedirs(self.keypoint_target_path)
+        cap = cv2.VideoCapture(self.selected_file_path)
+        if not os.path.exists(self.keypoint_target_path):
+            os.makedirs(self.keypoint_target_path)
 
-            num_frames = int(self.frames)
+        num_frames = int(self.frames)
 
-            existing_keypoint_files = os.listdir(self.keypoint_target_path)
-            keypoint_files_count = len(existing_keypoint_files)
+        existing_video_folders = [d for d in os.listdir(self.keypoint_target_path) if os.path.isdir(os.path.join(self.keypoint_target_path, d))]
+        folder_count = len(existing_video_folders) + 1
 
-            for frame_num in range(num_frames):
-                ret, image = self.cap.read()
-                if not ret or not self.running:
-                    break
+        sequence_folder_name = f'video_{folder_count}'
+        sequence_folder_path = os.path.join(self.keypoint_target_path, sequence_folder_name)
 
-                results, image_res = self.data_processor.image_processing(image, self.holistic_model)
-                self.data_processor.draw_landmarks(image_res, results)
-                keypoints = self.data_processor.keypoint_extraction(results)
+        if not os.path.exists(sequence_folder_path):
+            os.makedirs(sequence_folder_path)
 
-                frame_path = os.path.join(self.keypoint_target_path, f'w_{self.word}_{keypoint_files_count + 1}_s_1_f_{frame_num}')
-                print(self.keypoint_target_path, frame_path)
-                np.save(frame_path, keypoints)
+        existing_keypoint_files = os.listdir(sequence_folder_path)
+        keypoint_files_count = len(existing_keypoint_files)
 
-            self.placeholder_label.config(text="Your data has been added to Dataset! Load another video!")
-            self.stop_video()
-            self.button_choose_file.config(state=tk.NORMAL)
+        for frame_num in range(num_frames):
+            ret, image = cap.read()
+            if not ret:
+                break
 
+            results, image_res = self.data_processor.image_processing(image, self.holistic_model)
+            self.data_processor.draw_landmarks(image_res, results)
+            keypoints = self.data_processor.keypoint_extraction(results)
+            frame_path = os.path.join(sequence_folder_path, f'w_{self.word}_{keypoint_files_count + 1}_s_1_f_{frame_num}')
+            np.save(frame_path, keypoints)
 
-        threading.Thread(target=recording_thread, daemon=True).start()
+            progress_value = 50 + ((frame_num / num_frames) * 50)
+            self.progress['value'] = progress_value
+            self.frame_right.update_idletasks()
+
+        self.placeholder_label.config(text="Your data has been added to Dataset! Load another video!")
+        self.stop_video()
+        self.button_choose_file.config(state=tk.NORMAL)
+        self.button_add_to_dataset.config(state=tk.NORMAL)
+
+        self.progress.pack_forget()
 
     def play_video(self):
         def play_video_thread():
             if self.cap:
-                self.running = True
-
-                while self.running:
+                self.progress.pack()
+                current_frame = 0
+                while True:
                     ret, image = self.cap.read()
 
                     if ret:
-
+                        current_frame += 1
                         if self.placeholder_label.winfo_ismapped():
                             self.placeholder_label.pack_forget()
                             self.video_label.pack()
@@ -218,9 +230,15 @@ class AddDataVideoPage(Page):
                         self.video_label.imgtk = imgtk
                         self.video_label.configure(image=imgtk, text="")
 
+                        progress_value = (current_frame / self.frames) * 50
+                        self.progress['value'] = progress_value
+                        self.frame_right.update_idletasks()
+
                         self.video_label.after(5, lambda: None)
                     else:
-                        self.running = False
-            self.running = False
+                        break
+
+            threading.Thread(target=self.save_keypoints, daemon=True).start()
 
         threading.Thread(target=play_video_thread, daemon=True).start()
+

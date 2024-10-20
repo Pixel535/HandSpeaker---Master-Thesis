@@ -10,8 +10,9 @@ class DataProcessing:
         self.dataset_videos_path = "Data/Dataset/SL"
         self.dataset_keypoints_path = "Data/Dataset/Keypoints"
         self.dictionary_path = "Data/Dictionary"
+        self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
 
-    def get_vocab_and_dict(self):
+    def get_vocab_and_dict_for_Text_to_SL(self):
         vocab = []
         file_dict = {}
         for file in os.listdir(self.dictionary_path):
@@ -47,3 +48,83 @@ class DataProcessing:
         keypoints = np.concatenate([lh, rh])
         return keypoints
 
+    def convert_videos_to_numpy(self):
+        for word_folder in os.listdir(self.dataset_videos_path):
+            word_folder_path = os.path.join(self.dataset_videos_path, word_folder)
+
+            if not os.path.isdir(word_folder_path):
+                continue
+
+            word = word_folder
+
+            keypoint_target_path = os.path.join(self.dataset_keypoints_path, word)
+
+            if not os.path.exists(keypoint_target_path):
+                os.makedirs(keypoint_target_path)
+
+            for video_file in os.listdir(word_folder_path):
+                video_path = os.path.join(word_folder_path, video_file)
+
+                cap = cv2.VideoCapture(video_path)
+
+                num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+                existing_video_folders = [d for d in os.listdir(keypoint_target_path) if
+                                          os.path.isdir(os.path.join(keypoint_target_path, d))]
+                folder_count = len(existing_video_folders) + 1
+
+                sequence_folder_name = f'video_{folder_count}'
+                sequence_folder_path = os.path.join(keypoint_target_path, sequence_folder_name)
+
+                if not os.path.exists(sequence_folder_path):
+                    os.makedirs(sequence_folder_path)
+
+                for frame_num in range(num_frames):
+                    ret, image = cap.read()
+                    if not ret:
+                        break
+
+                    results, image_res = self.image_processing(image, self.holistic_model)
+                    self.draw_landmarks(image_res, results)
+                    keypoints = self.keypoint_extraction(results)
+
+                    frame_path = os.path.join(sequence_folder_path, f'w_{word}_s_{folder_count}_f_{frame_num}.npy')
+                    np.save(frame_path, keypoints)
+
+                cap.release()
+                print(f"[Word] - [{video_file}] has been converted!")
+
+            print(f"[Folder] - [{word_folder}] has been converted!")
+
+        print("All data has been converted!")
+
+    def get_dataset_vocab(self):
+        keypoints, num_labels = [], []
+        word_labels = np.array(os.listdir(self.dataset_keypoints_path))
+        map_labels = {label: num for num, label in enumerate(word_labels)}
+
+        for word in word_labels:
+            word_folder_path = os.path.join(self.dataset_keypoints_path, word)
+
+            if not os.path.isdir(word_folder_path):
+                continue
+
+            for sequence_folder in os.listdir(word_folder_path):
+                sequence_folder_path = os.path.join(word_folder_path, sequence_folder)
+
+                if not os.path.isdir(sequence_folder_path):
+                    continue
+
+                temp_sequence = []
+
+                for frame_file in sorted(os.listdir(sequence_folder_path)):
+                    if frame_file.endswith('.npy'):
+                        frame_path = os.path.join(sequence_folder_path, frame_file)
+                        npy = np.load(frame_path)
+                        temp_sequence.append(npy)
+
+                if temp_sequence:
+                    keypoints.append(temp_sequence)
+                    num_labels.append(map_labels[word])
+
+        return word_labels, num_labels, keypoints

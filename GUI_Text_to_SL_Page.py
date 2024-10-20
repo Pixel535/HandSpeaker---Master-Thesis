@@ -13,7 +13,7 @@ class TextToSLPage(Page):
         self.word_label = None
         self.word_frame = None
         self.data_processor = data_processor
-        self.vocab, self.file_dict = self.data_processor.get_vocab_and_dict()
+        self.vocab, self.file_dict = self.data_processor.get_vocab_and_dict_for_Text_to_SL()
 
         parent.geometry("1150x700")
 
