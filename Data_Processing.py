@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import mediapipe as mp
 import cv2
 import numpy as np
@@ -10,6 +12,7 @@ class DataProcessing:
         self.dataset_videos_path = "Data/Dataset/SL"
         self.dataset_keypoints_path = "Data/Dataset/Keypoints"
         self.dictionary_path = "Data/Dictionary"
+        self.files_path = "Data/Files"
         self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
 
     def get_vocab_and_dict_for_Text_to_SL(self):
@@ -128,3 +131,25 @@ class DataProcessing:
                     num_labels.append(map_labels[word])
 
         return word_labels, num_labels, keypoints
+
+    def save_dataset_to_files(self, word_labels, num_labels, keypoints):
+        dataset_path = os.path.join(self.files_path, 'dataset.pkl')
+        with open(dataset_path, 'wb') as f:
+            pickle.dump({
+                'word_labels': word_labels,
+                'num_labels': num_labels,
+                'keypoints': keypoints
+            }, f)
+
+    def load_dataset_from_files(self):
+        dataset_path = os.path.join(self.files_path, 'dataset.pkl')
+        with open(dataset_path, 'rb') as f:
+            data = pickle.load(f)
+
+        word_labels = data['word_labels']
+        num_labels = data['num_labels']
+        keypoints = data['keypoints']
+
+        return word_labels, num_labels, keypoints
+
+

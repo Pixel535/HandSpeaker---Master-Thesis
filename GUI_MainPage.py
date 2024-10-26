@@ -26,22 +26,15 @@ class MainPage(Page):
         self.button_1.pack(pady=10)
 
         # ----- Button 2 -----
-        self.button_2 = tk.Button(self.frame, text="Train model", bg="#C1C1CD", command=self.Train_Model)
-        self.button_2.pack(pady=10)
-
-        # ----- Button 3 -----
         self.button_3 = tk.Button(self.frame, text="Translate SL to Text", bg="#C1C1CD", command=self.SL_to_Text)
         self.button_3.pack(pady=10)
 
-        # ----- Button 4 -----
+        # ----- Button 3 -----
         self.button_4 = tk.Button(self.frame, text="Translate Text to SL", bg="#C1C1CD", command=self.Text_to_SL)
         self.button_4.pack(pady=10)
 
     def Add_Data(self):
         self.controller.show_add_data_page()
-
-    def Train_Model(self):
-        pass
 
     def SL_to_Text(self):
         pass
