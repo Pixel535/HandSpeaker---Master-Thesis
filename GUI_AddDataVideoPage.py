@@ -144,9 +144,9 @@ class AddDataVideoPage(Page):
 
         if valid:
             if self.word in self.data_processor.list_video_folders_in_directory():
-                self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_path, self.word)
+                self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_classes, self.word)
             else:
-                self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_path, self.word)
+                self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_classes, self.word)
                 os.makedirs(self.keypoint_target_path, exist_ok=True)
 
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)

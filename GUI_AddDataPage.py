@@ -192,12 +192,12 @@ class AddDataPage(Page):
 
             if valid:
                 if self.word in self.data_processor.list_video_folders_in_directory():
-                    self.video_target_path = os.path.join(self.data_processor.dataset_videos_path, self.word)
-                    self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_path, self.word)
+                    self.video_target_path = os.path.join(self.data_processor.dataset_videos_classes, self.word)
+                    self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_classes, self.word)
                 else:
-                    self.video_target_path = os.path.join(self.data_processor.dataset_videos_path, self.word)
+                    self.video_target_path = os.path.join(self.data_processor.dataset_videos_classes, self.word)
                     os.makedirs(self.video_target_path, exist_ok=True)
-                    self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_path, self.word)
+                    self.keypoint_target_path = os.path.join(self.data_processor.dataset_keypoints_classes, self.word)
                     os.makedirs(self.keypoint_target_path, exist_ok=True)
 
                 self.current_sequence = 0

@@ -3,21 +3,6 @@ from keras.src.callbacks import Callback
 import logging
 
 
-class Model2onnx(Callback):
-    try:
-        import tf2onnx
-    except ImportError:
-        raise ImportError("tf2onnx not installed, skipping model export to onnx")
-
-    def __init__(self, saved_model_path: str) -> None:
-        super().__init__()
-        self.saved_model_path = saved_model_path
-
-    def on_train_end(self, logs=None):
-        self.model.load_weights(self.saved_model_path)
-        self.tf2onnx.convert.from_keras(self.model, output_path=self.saved_model_path.replace(".h5", ".onnx"), )
-
-
 class TrainLogger(Callback):
 
     def __init__(self, log_path: str, log_file: str = 'logs.log', logLevel=logging.INFO) -> None:

@@ -1,6 +1,10 @@
 import keras
-from keras.src.layers import Input, Dense, LSTM, Dropout, BatchNormalization, Masking
+from keras import Layer
+from keras.src.layers import Input, Dense, LSTM, Dropout, BatchNormalization, Masking, Bidirectional, \
+    GlobalAveragePooling1D, GRU, Attention, ReLU, Add, MultiHeadAttention, MaxPooling1D, Conv1D, Activation, \
+    LayerNormalization, SimpleRNN
 from keras.src.models import Model
+from keras.src.regularizers import L2, L1L2
 
 
 class SLR_Model:
@@ -12,38 +16,38 @@ class SLR_Model:
 
         self.model = self.build_model()
 
-    def LSTM_Block(self, x, units_num, return_seq, activ):
-        x = LSTM(units=units_num, return_sequences=return_seq, activation=activ)(x)
-        x = BatchNormalization()(x)
-        x = Dropout(0.2)(x)
-
-        return x
-
-    def build_model(self, activation="leaky_relu"):
+    def build_model(self, activation="relu"):
         data = Input(name='input', shape=self.input_shape)
 
-        masked_data = Masking(mask_value=self.mask_value)(data)
+        # LSTM Layer
+        x = LSTM(units=128, return_sequences=True, activation='tanh')(data)
+        x = BatchNormalization()(x)
+        x = Dropout(0.3)(x)
 
-        lstm_block1 = self.LSTM_Block(x=masked_data, units_num=64, return_seq=True, activ=activation)
-        lstm_block2 = self.LSTM_Block(x=lstm_block1, units_num=128, return_seq=True, activ=activation)
-        lstm_block3 = self.LSTM_Block(x=lstm_block2, units_num=64, return_seq=True, activ=activation)
-        lstm_block4 = self.LSTM_Block(x=lstm_block3, units_num=32, return_seq=False, activ=activation)
+        # GRU Layer
+        x = GRU(units=256, return_sequences=False, activation='tanh')(x)
+        x = BatchNormalization()(x)
+        x = Dropout(0.3)(x)
 
-        dense = Dense(64, activation=activation)(lstm_block4)
-        output = Dense(self.word_labels.shape[0], activation='softmax')(dense)
+        # Dense Layer for feature extraction
+        x = Dense(units=256, activation='relu')(x)
+        x = BatchNormalization()(x)
+        x = Dropout(0.3)(x)
+
+        output = Dense(self.word_labels.shape[0], activation="softmax")(x)
 
         model = Model(inputs=data, outputs=output)
 
         return model
 
     def compile_model(self):
-        optimizer = 'Adam'
+        optimizer = keras.optimizers.Adam(learning_rate=0.001)
         loss = 'categorical_crossentropy'
         metrics = ['categorical_accuracy']
         self.model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
-    def train(self, train, validate, epochs, callbacks):
-        self.model.fit(train, validate, epochs=epochs, callbacks=callbacks)
+    def train(self, keypoints, num_labels, epochs, callbacks, x_val, y_val, batch_size, class_weight):
+        self.model.fit(keypoints, num_labels, epochs=epochs, callbacks=callbacks, validation_data=(x_val, y_val), batch_size=batch_size, class_weight=class_weight)
 
     def validate(self, val_keypoints, val_num_labels):
         return self.model.evaluate(val_keypoints, val_num_labels)

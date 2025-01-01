@@ -37,7 +37,7 @@ class MainPage(Page):
         self.controller.show_add_data_page()
 
     def SL_to_Text(self):
-        pass
+        self.controller.show_sl_to_text_page()
 
     def Text_to_SL(self):
         self.controller.show_text_to_sl_page()
