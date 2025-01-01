@@ -1,8 +1,14 @@
+import string
 import threading
+
+import language_tool_python
 import mediapipe as mp
 import tkinter as tk
 import cv2
+import numpy as np
 from PIL import Image, ImageTk
+from keras.src.saving import load_model
+
 from GUI_Page import Page
 
 
@@ -18,6 +24,13 @@ class SLToTextCameraPage(Page):
         self.camera_current_height = None
         self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
         self.data_processor = data_processor
+        self.model = load_model('Model/model.keras')
+        self.tool = None #language_tool_python.LanguageToolPublicAPI('en-UK')
+        self.words = self.data_processor.list_video_folders_in_directory()
+        self.sentence = []
+        self.keypoints_buffer = []
+        self.last_prediction = []
+        self.grammar_result = ""
 
         parent.geometry("1150x700")
 
@@ -44,8 +57,17 @@ class SLToTextCameraPage(Page):
         self.button_stop = tk.Button(self.frame_right, text="Stop Translating", command=self.stop_action, state=tk.DISABLED)
         self.button_stop.pack(pady=5)
 
+        self.button_grammar_check = tk.Button(self.frame_right, text="Check Grammar", command=self.grammar_check)
+        self.button_grammar_check.pack(pady=5)
+
+        self.button_reset = tk.Button(self.frame_right, text="Reset", command=self.reset_translation)
+        self.button_reset.pack(pady=5)
+
         self.label_info_1 = tk.Label(self.frame_right, text="Sign Language translated to Text:", font=("Helvetica", 9, 'bold'))
         self.label_info_1.pack()
+
+        self.label_transcription = tk.Label( self.frame_right, text="", fg="blue", wraplength=300, justify="left")
+        self.label_transcription.pack(pady=10)
 
         # ----- Button Frame -----
         self.frame_bottom = tk.Frame(self.frame)
@@ -83,14 +105,17 @@ class SLToTextCameraPage(Page):
     def stop_action(self):
         self.translating = False
         self.reset_camera_settings()
+        self.reset_translation()
         self.button_stop.config(state=tk.DISABLED)
 
     def reset_camera_settings(self):
         self.button_camera.config(state=tk.NORMAL)
         self.button_stop.config(state=tk.NORMAL)
+        self.button_start_translating.config(state=tk.NORMAL)
 
     def translate_action(self):
         self.translating = True
+        self.reset_translation()
         self.button_camera.config(state=tk.DISABLED)
         self.button_start_translating.config(state=tk.DISABLED)
 
@@ -125,6 +150,10 @@ class SLToTextCameraPage(Page):
             self.warning_camera.config(text="You need to turn on your camera first!")
         else:
             self.warning_camera.config(text="")
+            self.translating = True
+            self.button_camera.config(state=tk.DISABLED)
+            self.button_stop.config(state=tk.NORMAL)
+            self.button_start_translating.config(state=tk.DISABLED)
 
     def update_frame(self):
         if self.running:
@@ -136,12 +165,39 @@ class SLToTextCameraPage(Page):
                     self.video_label.pack()
                 results, image = self.data_processor.image_processing(image, self.holistic_model)
                 self.data_processor.draw_landmarks(image, results)
+
                 if self.translating:
-                    cv2.putText(image, 'Translating...', (20, self.camera_current_height - 20),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
-                else:
-                    cv2.putText(image, 'Press Start to Translate', (20, self.camera_current_height - 20),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+
+                    self.keypoints_buffer.append(self.data_processor.keypoint_extraction(results))
+
+                    if len(self.keypoints_buffer) == 100:
+                        kpts = np.array(self.keypoints_buffer)
+                        self.keypoints_buffer.clear()
+
+                        prediction = self.model.predict(kpts[np.newaxis, :, :])
+
+                        predicted_sign = self.words[np.argmax(prediction)]
+
+                        if predicted_sign != self.last_prediction:
+                            self.sentence.append(predicted_sign)
+                            self.last_prediction = predicted_sign
+
+                    if len(self.sentence) > 10:
+                        self.sentence = self.sentence[-10:]
+
+                    if len(self.sentence) >= 2:
+                        if (self.sentence[-1] in string.ascii_letters and
+                                self.sentence[-2] in string.ascii_letters):
+                            self.sentence[-1] = self.sentence[-2] + self.sentence[-1]
+                            self.sentence.pop(-2)
+                            self.sentence[-1] = self.sentence[-1].capitalize()
+
+                    if self.sentence:
+                        self.sentence[0] = self.sentence[0].capitalize()
+
+                text_to_display = self.grammar_result if self.grammar_result else ' '.join(self.sentence)
+                self.label_transcription.config(text=text_to_display)
+
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 img = Image.fromarray(image)
                 imgtk = ImageTk.PhotoImage(image=img)
@@ -153,3 +209,19 @@ class SLToTextCameraPage(Page):
             self.video_label.after(5, self.update_frame)
         else:
             self.video_label.config(image="", text="")
+
+    def grammar_check(self):
+        if self.sentence:
+            text = ' '.join(self.sentence)
+            corrected = self.tool.correct(text)
+            self.grammar_result = corrected
+        else:
+            self.grammar_result = "No text detected"
+        self.label_transcription.config(text=self.grammar_result)
+
+    def reset_translation(self):
+        self.sentence.clear()
+        self.keypoints_buffer.clear()
+        self.last_prediction = None
+        self.grammar_result = ""
+        self.label_transcription.config(text="")
