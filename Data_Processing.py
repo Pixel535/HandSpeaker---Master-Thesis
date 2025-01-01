@@ -30,6 +30,10 @@ class DataProcessing:
         self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
         self.mask_value = 0.0
 
+    def list_video_folders_in_directory(self):
+        folders = [name for name in os.listdir(self.dataset_videos_classes) if os.path.isdir(os.path.join(self.dataset_videos_classes, name))]
+        return folders
+
     def get_vocab_and_dict_for_Text_to_SL(self):
         vocab = []
         file_dict = {}

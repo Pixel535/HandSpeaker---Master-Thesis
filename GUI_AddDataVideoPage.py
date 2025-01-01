@@ -87,7 +87,7 @@ class AddDataVideoPage(Page):
 
     def record_data_action(self):
         self.stop_video()
-        self.controller.show_add_data_page()
+        self.controller.show_add_data_camera_page()
 
     def stop_video(self):
         if self.cap:

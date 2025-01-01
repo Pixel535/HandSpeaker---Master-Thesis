@@ -34,10 +34,10 @@ class MainPage(Page):
         self.button_4.pack(pady=10)
 
     def Add_Data(self):
-        self.controller.show_add_data_page()
+        self.controller.show_add_data_camera_page()
 
     def SL_to_Text(self):
-        self.controller.show_sl_to_text_page()
+        self.controller.show_sl_to_text_camera_page()
 
     def Text_to_SL(self):
         self.controller.show_text_to_sl_page()

@@ -1,6 +1,8 @@
 import os
 import re
 
+from Graphs import Graphs
+
 os.environ["KERAS_BACKEND"] = "tensorflow"
 from Data_Processing import DataProcessing
 from GUI import GUI
@@ -13,8 +15,8 @@ if __name__ == "__main__":
     convert_data = False
     add_padding = False
     save_data = False
-    train_model = True
-    run_app = False
+    train_model = False
+    run_app = True
 
     data_processor = DataProcessing()
 
@@ -57,8 +59,8 @@ if __name__ == "__main__":
 
     if run_app:
         print("Running App...")
-        #logs_path = "Model/logs.log"
-        #Graphs(logs_path)
+        logs_path = "Model/logs.log"
+        Graphs(logs_path)
 
         app = GUI(data_processor)
         app.run()

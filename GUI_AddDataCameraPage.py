@@ -7,7 +7,7 @@ import threading
 from GUI_Page import Page
 from PIL import Image, ImageTk
 
-class AddDataPage(Page):
+class AddDataCameraPage(Page):
 
     def __init__(self, parent, controller, data_processor):
         super().__init__(parent, controller)
