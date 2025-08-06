@@ -8,7 +8,7 @@ from GUI_Text_to_SL_Page import TextToSLPage
 
 
 class GUI:
-    def __init__(self, data_processor):
+    def __init__(self, data_processor, lang):
         self.window = tk.Tk()
         self.window.title("HandSpeaker")
         self.window.geometry("800x700")
@@ -16,6 +16,7 @@ class GUI:
         self.window.iconphoto(False, self.icon)
         self.data_processor = data_processor
         self.current_page = None
+        self.lang = lang
 
     def run(self):
         self.show_main_page()
@@ -43,12 +44,12 @@ class GUI:
 
     def show_sl_to_text_camera_page(self):
         self.hide_current_page()
-        self.current_page = SLToTextCameraPage(self.window, self, self.data_processor)
+        self.current_page = SLToTextCameraPage(self.window, self, self.data_processor, self.lang)
         self.current_page.show()
 
     def show_sl_to_text_video_page(self):
         self.hide_current_page()
-        self.current_page = SLToTextVideoPage(self.window, self, self.data_processor)
+        self.current_page = SLToTextVideoPage(self.window, self, self.data_processor, self.lang)
         self.current_page.show()
 
     def hide_current_page(self):

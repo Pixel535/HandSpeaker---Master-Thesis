@@ -1,6 +1,7 @@
 import os
 import string
 import threading
+import time
 from tkinter import filedialog
 import cv2
 import language_tool_python
@@ -13,7 +14,7 @@ import tkinter as tk
 
 
 class SLToTextVideoPage(Page):
-    def __init__(self, parent, controller, data_processor):
+    def __init__(self, parent, controller, data_processor, lang):
         super().__init__(parent, controller)
         self.max_video_width = 800
         self.max_video_height = 700
@@ -23,7 +24,8 @@ class SLToTextVideoPage(Page):
         self.frames = None
         self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
         self.data_processor = data_processor
-        self.model = load_model('Model/model.keras')
+        model_path = os.path.join("Model", lang, "model.keras")
+        self.model = load_model(model_path)
         self.tool = None #language_tool_python.LanguageToolPublicAPI('en-UK')
         self.words = self.data_processor.list_video_folders_in_directory()
         self.sentence = []
@@ -196,12 +198,16 @@ class SLToTextVideoPage(Page):
                         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                         img = Image.fromarray(image)
                         imgtk = ImageTk.PhotoImage(image=img)
-                        self.video_label.imgtk = imgtk
-                        self.video_label.configure(image=imgtk, text="")
 
-                        self.frame_right.update_idletasks()
+                        def update_gui(imgtk_copy):
+                            if self.placeholder_label.winfo_ismapped():
+                                self.placeholder_label.pack_forget()
+                                self.video_label.pack()
+                            self.video_label.imgtk = imgtk_copy
+                            self.video_label.configure(image=imgtk_copy)
 
-                        self.video_label.after(5, lambda: None)
+                        self.video_label.after(0, update_gui, imgtk)
+                        time.sleep(1 / 10000)
                     else:
                         break
 

@@ -5,11 +5,11 @@ from sklearn.model_selection import train_test_split
 from Callbacks_mltu import TrainLogger
 from SLR_Model import SLR_Model
 from keras.src.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard, BackupAndRestore
-from sklearn.utils import class_weight
 
 class TrainModel:
-    def __init__(self, word_labels, max_frames, keypoints, num_labels):
+    def __init__(self, word_labels, max_frames, keypoints, num_labels, lang):
 
+        self.lang = lang
         self.word_labels = word_labels
 
         self.keypoints = keypoints
@@ -44,7 +44,11 @@ class TrainModel:
 
         print("Creating Model...")
 
-        if os.path.exists("Model/model.keras"):
+        model_dir = os.path.join("Model", self.lang)
+        model_path = os.path.join(model_dir, "model.keras")
+        logs_path = os.path.join(model_dir, "logs")
+
+        if os.path.exists(model_path):
             input_shape = (self.max_frames, 126)
             SLR_Model = self.SLR_Model(input_shape, self.word_labels, self.mask_value)
             SLR_Model.compile_model()
@@ -64,9 +68,9 @@ class TrainModel:
         print("Training Model...")
 
         earlystopper = EarlyStopping(monitor='val_categorical_accuracy', patience=30, verbose=1, mode='max')
-        checkpoint = ModelCheckpoint("Model/model.keras", monitor='val_categorical_accuracy', verbose=1, save_best_only=True, mode='max')
+        checkpoint = ModelCheckpoint(model_path, monitor='val_categorical_accuracy', verbose=1, save_best_only=True, mode='max')
         trainLogger = TrainLogger("Model")
-        tb_callback = TensorBoard('Model/logs', update_freq=1)
+        tb_callback = TensorBoard(logs_path, update_freq=1)
         reduceLROnPlat = ReduceLROnPlateau(monitor='val_categorical_accuracy', factor=0.9, min_delta=1e-10, patience=10, verbose=1,
                                            mode='auto')
 

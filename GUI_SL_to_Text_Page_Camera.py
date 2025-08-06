@@ -1,3 +1,4 @@
+import os
 import string
 import threading
 
@@ -13,7 +14,7 @@ from GUI_Page import Page
 
 
 class SLToTextCameraPage(Page):
-    def __init__(self, parent, controller, data_processor):
+    def __init__(self, parent, controller, data_processor, lang):
         super().__init__(parent, controller)
         self.max_camera_width = 800
         self.max_camera_height = 700
@@ -24,7 +25,8 @@ class SLToTextCameraPage(Page):
         self.camera_current_height = None
         self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
         self.data_processor = data_processor
-        self.model = load_model('Model/model.keras')
+        model_path = os.path.join("Model", lang, "model.keras")
+        self.model = load_model(model_path)
         self.tool = None #language_tool_python.LanguageToolPublicAPI('en-UK')
         self.words = self.data_processor.list_video_folders_in_directory()
         self.sentence = []

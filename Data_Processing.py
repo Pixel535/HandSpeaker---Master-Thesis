@@ -8,24 +8,25 @@ import mediapipe as mp
 import cv2
 import numpy as np
 from keras.src.utils import to_categorical
-from matplotlib import pyplot as plt
 
 
 class DataProcessing:
 
-    def __init__(self):
-        self.dataset_videos_classes = "Data/Dataset/Videos"
-        self.dataset_keypoints_classes = "Data/Dataset/Keypoints"
-
-        self.dataset_videos_rejected = "Data/Dataset/Rejected Videos"
-        self.dataset_downloaded_videos = "Data/Dataset/Downloaded Videos"
-
+    def __init__(self, lang):
         self.dictionary_path = "Data/Dictionary"
-        self.files_path = "Data/Files"
 
-        self.dataset_test_file_path = "Data/Dataset/test.csv"
-        self.dataset_train_file_path = "Data/Dataset/train.csv"
-        self.dataset_val_file_path = "Data/Dataset/val.csv"
+        base_lang_path = os.path.join("Data", lang)
+
+        self.dataset_videos_classes = os.path.join(base_lang_path, "Dataset", "Videos")
+        self.dataset_keypoints_classes = os.path.join(base_lang_path, "Dataset", "Keypoints")
+        self.dataset_videos_rejected = os.path.join(base_lang_path, "Dataset", "Rejected Videos")
+        self.dataset_downloaded_videos = os.path.join(base_lang_path, "Dataset", "Downloaded Videos")
+
+        self.files_path = os.path.join(base_lang_path, "Files")
+
+        self.dataset_test_file_path = os.path.join(base_lang_path, "Dataset", "test.csv")
+        self.dataset_train_file_path = os.path.join(base_lang_path, "Dataset", "train.csv")
+        self.dataset_val_file_path = os.path.join(base_lang_path, "Dataset", "val.csv")
 
         self.holistic_model = mp.solutions.holistic.Holistic(min_detection_confidence=0.75, min_tracking_confidence=0.75)
         self.mask_value = 0.0
