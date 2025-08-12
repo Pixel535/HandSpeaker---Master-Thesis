@@ -107,26 +107,22 @@ class AddDataCameraPage(Page):
         self.video_label.pack_forget()
         self.placeholder_label.pack()
 
+
     def start_camera(self):
         def camera_thread():
             self.button_camera.config(state=tk.DISABLED)
-            self.cap = cv2.VideoCapture(0)
+            self.cap = cv2.VideoCapture(0)  # nie zmieniamy żadnych CAP_PROP_*
             if self.cap.isOpened():
-                self.camera_current_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                self.camera_current_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                if self.camera_current_width > self.max_camera_width or self.camera_current_height > self.max_camera_height:
-                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.max_camera_width)
-                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.max_camera_height)
                 self.running = True
                 self.update_frame()
             else:
                 self.video_label.config(text="No camera detected !", fg="red")
-                self.cap.release()
+                if self.cap:
+                    self.cap.release()
                 self.cap = None
                 self.button_camera.config(state=tk.NORMAL)
 
         threading.Thread(target=camera_thread, daemon=True).start()
-
 
     def update_frame(self):
         if self.running:
@@ -136,35 +132,44 @@ class AddDataCameraPage(Page):
                     self.button_camera.config(text="Close Camera", state=tk.NORMAL)
                     self.placeholder_label.pack_forget()
                     self.video_label.pack()
-                results, image = self.data_processor.image_processing(image, self.holistic_model)
-                self.data_processor.draw_landmarks(image, results)
+
+                results, proc = self.data_processor.image_processing(image, self.holistic_model)
+                self.data_processor.draw_landmarks(proc, results)
+
+                h, w = proc.shape[:2]
                 if self.recording:
                     if self.during_recording:
-                        cv2.circle(image, (self.camera_current_width - 30, 30), 10, (0, 0, 255), -1)
-                        cv2.putText(image, f'Recording data for "{self.word}".', (20, 20),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-                        cv2.putText(image, f'Sequence {self.current_sequence}/{self.sequences}',
-                                    (20, self.camera_current_height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2,
-                                    cv2.LINE_AA)
+                        cv2.circle(proc, (w - 30, 30), 10, (0, 0, 255), -1)
+                        cv2.putText(proc, f'Recording data for "{self.word}".', (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+                        cv2.putText(proc, f'Sequence {self.current_sequence}/{self.sequences}',(20, h - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
                         self.button_next.config(state=tk.DISABLED)
                     else:
-                        cv2.putText(image, f'Press Next to Record another Sequence. {self.current_sequence}/{self.sequences} recorded.', (20, self.camera_current_height - 20),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
+                        cv2.putText(proc, f'Press Next to Record another Sequence. {self.current_sequence}/{self.sequences} recorded.',
+                                    (20, h - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
                         self.button_next.config(state=tk.NORMAL)
                 else:
-                    cv2.putText(image, 'Press Start to Record Sequence', (20, self.camera_current_height - 20),
+                    cv2.putText(proc, 'Press Start to Record Sequence', (20, h - 20),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(image)
-                imgtk = ImageTk.PhotoImage(image=img)
+
+                max_w, max_h = self.max_camera_width, self.max_camera_height
+                scale = min(max_w / w, max_h / h, 1.0)
+                if scale < 1.0:
+                    disp = cv2.resize(proc, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                else:
+                    disp = proc
+
+                disp = cv2.cvtColor(disp, cv2.COLOR_BGR2RGB)
+                imgtk = ImageTk.PhotoImage(image=Image.fromarray(disp))
                 self.video_label.imgtk = imgtk
                 self.video_label.configure(image=imgtk, text="")
             else:
                 if not self.placeholder_label.winfo_ismapped():
                     self.placeholder_label.pack()
+
             self.video_label.after(5, self.update_frame)
         else:
             self.video_label.config(image="", text="")
+
 
     def start_action(self):
         if not self.running:
@@ -206,7 +211,6 @@ class AddDataCameraPage(Page):
                 self.record_action()
                 self.button_stop.config(state=tk.NORMAL)
 
-
     def record_data(self):
         def recording_thread():
             if not os.path.exists(self.keypoint_target_path):
@@ -223,7 +227,6 @@ class AddDataCameraPage(Page):
 
                 sequence_folder_name = f'video_{folder_count}'
                 sequence_folder_path = os.path.join(self.keypoint_target_path, sequence_folder_name)
-
                 if not os.path.exists(sequence_folder_path):
                     os.makedirs(sequence_folder_path)
 
@@ -236,18 +239,30 @@ class AddDataCameraPage(Page):
                 video_file_name = f'{self.word}_{video_count + 1}.mp4'
                 video_file_path = os.path.join(self.video_target_path, video_file_name)
 
-                fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-                out = cv2.VideoWriter(video_file_path, fourcc, 20.0, (self.camera_current_width, self.camera_current_height))
+                ret0, frame0 = self.cap.read()
+                if not ret0 or not self.recording:
+                    self.during_recording = False
+                    return
 
-                for frame_num in range(num_frames):
-                    ret, image = self.cap.read()
+                h0, w0 = frame0.shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+                out = cv2.VideoWriter(video_file_path, fourcc, 20.0, (w0, h0))
+
+                out.write(frame0)
+                results0, _proc0 = self.data_processor.image_processing(frame0, self.holistic_model)
+                keypoints0 = self.data_processor.keypoint_extraction(results0)
+                frame_path0 = os.path.join(sequence_folder_path,  f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{0}')
+                np.save(frame_path0, keypoints0)
+                self.current_frame = 0
+
+                for frame_num in range(1, num_frames):
+                    ret, frame = self.cap.read()
                     if not ret or not self.recording:
                         break
 
-                    out.write(image)
+                    out.write(frame)
 
-                    results, image = self.data_processor.image_processing(image, self.holistic_model)
-                    self.data_processor.draw_landmarks(image, results)
+                    results, _proc = self.data_processor.image_processing(frame, self.holistic_model)
                     keypoints = self.data_processor.keypoint_extraction(results)
 
                     frame_path = os.path.join(sequence_folder_path, f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{frame_num}')
@@ -266,7 +281,6 @@ class AddDataCameraPage(Page):
                 self.button_next.config(state=tk.NORMAL)
 
         threading.Thread(target=recording_thread, daemon=True).start()
-
 
     def next_sequence(self):
         self.current_frame = 0

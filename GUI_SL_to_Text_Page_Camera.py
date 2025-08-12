@@ -126,16 +126,12 @@ class SLToTextCameraPage(Page):
             self.button_camera.config(state=tk.DISABLED)
             self.cap = cv2.VideoCapture(0)
             if self.cap.isOpened():
-                self.camera_current_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                self.camera_current_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                if self.camera_current_width > self.max_camera_width or self.camera_current_height > self.max_camera_height:
-                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.max_camera_width)
-                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.max_camera_height)
                 self.running = True
                 self.update_frame()
             else:
                 self.video_label.config(text="No camera detected !", fg="red")
-                self.cap.release()
+                if self.cap:
+                    self.cap.release()
                 self.cap = None
                 self.button_camera.config(state=tk.NORMAL)
 
@@ -159,17 +155,17 @@ class SLToTextCameraPage(Page):
 
     def update_frame(self):
         if self.running:
-            ret, image = self.cap.read()
+            ret, frame = self.cap.read()
             if ret:
                 if self.placeholder_label.winfo_ismapped():
                     self.button_camera.config(text="Close Camera", state=tk.NORMAL)
                     self.placeholder_label.pack_forget()
                     self.video_label.pack()
-                results, image = self.data_processor.image_processing(image, self.holistic_model)
-                self.data_processor.draw_landmarks(image, results)
+
+                results, proc = self.data_processor.image_processing(frame, self.holistic_model)
+                self.data_processor.draw_landmarks(proc, results)
 
                 if self.translating:
-
                     self.keypoints_buffer.append(self.data_processor.keypoint_extraction(results))
 
                     if len(self.keypoints_buffer) == 100:
@@ -177,7 +173,6 @@ class SLToTextCameraPage(Page):
                         self.keypoints_buffer.clear()
 
                         prediction = self.model.predict(kpts[np.newaxis, :, :])
-
                         predicted_sign = self.words[np.argmax(prediction)]
 
                         if predicted_sign != self.last_prediction:
@@ -200,14 +195,22 @@ class SLToTextCameraPage(Page):
                 text_to_display = self.grammar_result if self.grammar_result else ' '.join(self.sentence)
                 self.label_transcription.config(text=text_to_display)
 
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(image)
-                imgtk = ImageTk.PhotoImage(image=img)
+                h, w = proc.shape[:2]
+                max_w, max_h = self.max_camera_width, self.max_camera_height
+                scale = min(max_w / w, max_h / h, 1.0)
+                if scale < 1.0:
+                    disp = cv2.resize(proc, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                else:
+                    disp = proc
+
+                disp = cv2.cvtColor(disp, cv2.COLOR_BGR2RGB)
+                imgtk = ImageTk.PhotoImage(image=Image.fromarray(disp))
                 self.video_label.imgtk = imgtk
                 self.video_label.configure(image=imgtk, text="")
             else:
                 if not self.placeholder_label.winfo_ismapped():
                     self.placeholder_label.pack()
+
             self.video_label.after(5, self.update_frame)
         else:
             self.video_label.config(image="", text="")
