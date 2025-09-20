@@ -63,7 +63,8 @@ if __name__ == "__main__":
     if run_app:
         print("Running App...")
         logs_path = os.path.join("Model", chosen_language, "logs.log")
-        #Graphs(logs_path)
+        print(logs_path)
+        Graphs(logs_path)
 
         app = GUI(data_processor, chosen_language)
         app.run()
