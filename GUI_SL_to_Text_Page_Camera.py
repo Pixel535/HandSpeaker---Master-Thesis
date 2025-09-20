@@ -211,7 +211,7 @@ class SLToTextCameraPage(Page):
                 if not self.placeholder_label.winfo_ismapped():
                     self.placeholder_label.pack()
 
-            self.video_label.after(5, self.update_frame)
+            self.video_label.after(1, self.update_frame)
         else:
             self.video_label.config(image="", text="")
 

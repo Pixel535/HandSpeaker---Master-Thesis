@@ -234,7 +234,7 @@ class AddDataVideoPage(Page):
                         self.progress['value'] = progress_value
                         self.frame_right.update_idletasks()
 
-                        self.video_label.after(5, lambda: None)
+                        self.video_label.after(1, lambda: None)
                     else:
                         break
 

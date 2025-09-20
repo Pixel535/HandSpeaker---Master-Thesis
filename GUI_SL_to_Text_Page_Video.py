@@ -206,7 +206,7 @@ class SLToTextVideoPage(Page):
                             self.video_label.imgtk = imgtk_copy
                             self.video_label.configure(image=imgtk_copy)
 
-                        self.video_label.after(0, update_gui, imgtk)
+                        self.video_label.after(1, update_gui, imgtk)
                         time.sleep(1 / 10000)
                     else:
                         break
