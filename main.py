@@ -1,11 +1,10 @@
 import os
-import re
 
+from Data_Processing import DataProcessing
 from GUI_Language_Selector import Language_Selector
 from Graphs import Graphs
 
 os.environ["KERAS_BACKEND"] = "tensorflow"
-from Data_Processing import DataProcessing
 from GUI import GUI
 from TrainModel import TrainModel
 

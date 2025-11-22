@@ -181,7 +181,7 @@ class AddDataVideoPage(Page):
 
             results, image_res = self.data_processor.image_processing(image, self.holistic_model)
             self.data_processor.draw_landmarks(image_res, results)
-            keypoints = self.data_processor.keypoint_extraction(results)
+            keypoints = self.data_processor.extract_frame_features(results, do_augment=False)
             frame_path = os.path.join(sequence_folder_path, f'w_{self.word}_{keypoint_files_count + 1}_s_1_f_{frame_num}')
             np.save(frame_path, keypoints)
 

@@ -166,7 +166,7 @@ class SLToTextCameraPage(Page):
                 self.data_processor.draw_landmarks(proc, results)
 
                 if self.translating:
-                    self.keypoints_buffer.append(self.data_processor.keypoint_extraction(results))
+                    self.keypoints_buffer.append(self.data_processor.extract_frame_features(results, do_augment=False))
 
                     if len(self.keypoints_buffer) == 100:
                         kpts = np.array(self.keypoints_buffer)
@@ -176,18 +176,21 @@ class SLToTextCameraPage(Page):
                         predicted_sign = self.words[np.argmax(prediction)]
 
                         if predicted_sign != self.last_prediction:
-                            self.sentence.append(predicted_sign)
                             self.last_prediction = predicted_sign
+                            if len(predicted_sign) == 1 and predicted_sign.isalpha():
+                                predicted_sign = predicted_sign.upper()
+                            self.sentence.append(predicted_sign)
 
                     if len(self.sentence) > 10:
                         self.sentence = self.sentence[-10:]
 
                     if len(self.sentence) >= 2:
-                        if (self.sentence[-1] in string.ascii_letters and
-                                self.sentence[-2] in string.ascii_letters):
-                            self.sentence[-1] = self.sentence[-2] + self.sentence[-1]
-                            self.sentence.pop(-2)
-                            self.sentence[-1] = self.sentence[-1].capitalize()
+                        if all(len(s) == 1 and s.isalpha() and s.isupper() for s in self.sentence[-2:]):
+                            i = len(self.sentence) - 1
+                            while i > 0 and len(self.sentence[i - 1]) == 1 and self.sentence[i - 1].isupper():
+                                i -= 1
+                            joined = ''.join(self.sentence[i:]).capitalize()
+                            self.sentence = self.sentence[:i] + [joined]
 
                     if self.sentence:
                         self.sentence[0] = self.sentence[0].capitalize()

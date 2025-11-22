@@ -3,12 +3,14 @@ from collections import Counter
 import numpy as np
 from sklearn.model_selection import train_test_split
 from Callbacks_mltu import TrainLogger
-from SLR_Model import SLR_Model
-from keras.src.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard, BackupAndRestore
+from SLR_English_Model import SLR_English_Model
+from keras.src.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard, LearningRateScheduler
+
+from SLR_Polish_Model import SLR_Polish_Model
+
 
 class TrainModel:
     def __init__(self, word_labels, max_frames, keypoints, num_labels, lang):
-
         self.lang = lang
         self.word_labels = word_labels
 
@@ -24,7 +26,9 @@ class TrainModel:
         self.mask_value = 0.0
         self.batch_size = 32
         self.max_frames = max_frames
-        self.SLR_Model = SLR_Model
+        self.input_dim = 190
+        self.SLR_English_Model = SLR_English_Model
+        self.SLR_Polish_Model = SLR_Polish_Model
 
         self.trainModel()
 
@@ -47,21 +51,24 @@ class TrainModel:
         model_dir = os.path.join("Model", self.lang)
         model_path = os.path.join(model_dir, "model.keras")
         logs_path = os.path.join(model_dir, "logs")
+        input_shape = (self.max_frames, self.input_dim)
+        if self.lang is "English":
+            slr = self.SLR_English_Model(input_shape, self.word_labels, self.mask_value)
+        elif self.lang is "Polish":
+            slr = self.SLR_Polish_Model(input_shape, self.word_labels, self.mask_value)
+        slr.compile_model()
 
+        new_model = True
         if os.path.exists(model_path):
-            input_shape = (self.max_frames, 126)
-            SLR_Model = self.SLR_Model(input_shape, self.word_labels, self.mask_value)
-            SLR_Model.compile_model()
-            SLR_Model.model.load_weights("Model/model.keras")
-            print(SLR_Model.model.get_weights())
-            new_model = False
-        else:
-            input_shape = (self.max_frames, 126)
-            SLR_Model = self.SLR_Model(input_shape, self.word_labels, self.mask_value)
-            SLR_Model.compile_model()
-            SLR_Model.summary(line_length=110)
-            print(SLR_Model.model.get_weights())
-            new_model = True
+            try:
+                slr.model.load_weights(model_path)
+                new_model = False
+                print(f"[Info] Loaded weights from {model_path}")
+            except Exception as e:
+                print(f"[Warn] Could not load existing weights ({e}). Training from scratch.")
+
+        if new_model:
+            slr.summary(line_length=110)
 
         print("Model Created...")
 
@@ -69,36 +76,23 @@ class TrainModel:
 
         earlystopper = EarlyStopping(monitor='val_categorical_accuracy', patience=30, verbose=1, mode='max')
         checkpoint = ModelCheckpoint(model_path, monitor='val_categorical_accuracy', verbose=1, save_best_only=True, mode='max')
-        trainLogger = TrainLogger("Model")
+        trainLogger = TrainLogger(model_dir)
         tb_callback = TensorBoard(logs_path, update_freq=1)
-        reduceLROnPlat = ReduceLROnPlateau(monitor='val_categorical_accuracy', factor=0.9, min_delta=1e-10, patience=10, verbose=1,
-                                           mode='auto')
+        reduceLROnPlat = ReduceLROnPlateau(monitor='val_categorical_accuracy', factor=0.9, min_delta=1e-10, patience=10, verbose=1, mode='auto')
 
-        is_Trained = False
-
-        if is_Trained is False:
-            if new_model is True:
-                SLR_Model.train(self.train_keypoints,
-                              self.train_num_labels,
-                              epochs=self.epochs,
-                              callbacks=[earlystopper, checkpoint, trainLogger, reduceLROnPlat, tb_callback],
-                              x_val=self.val_keypoints,
-                              y_val=self.val_num_labels,
-                              batch_size=self.batch_size,
-                              class_weight=class_weights)
-            else:
-                SLR_Model.train(self.train_keypoints,
-                                self.train_num_labels,
-                                epochs=self.epochs,
-                                callbacks=[earlystopper, checkpoint, trainLogger, reduceLROnPlat, tb_callback],
-                                x_val=self.val_keypoints,
-                                y_val=self.val_num_labels,
-                                batch_size=self.batch_size,
-                                class_weight=class_weights)
-
+        slr.train(
+            self.train_keypoints,
+            self.train_num_labels,
+            epochs=self.epochs,
+            callbacks=[earlystopper, checkpoint, trainLogger, tb_callback, reduceLROnPlat],
+            x_val=self.val_keypoints,
+            y_val=self.val_num_labels,
+            batch_size=self.batch_size,
+            class_weight=class_weights
+        )
 
         print("Finished Training Model...")
-        loss, categorical_accuracy = SLR_Model.validate(self.val_keypoints, self.val_num_labels)
 
+        loss, categorical_accuracy = slr.validate(self.val_keypoints, self.val_num_labels)
         print("Validation loss: ", loss)
         print("Validation Categorical Accuracy: ", categorical_accuracy)

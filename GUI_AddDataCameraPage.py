@@ -250,7 +250,7 @@ class AddDataCameraPage(Page):
 
                 out.write(frame0)
                 results0, _proc0 = self.data_processor.image_processing(frame0, self.holistic_model)
-                keypoints0 = self.data_processor.keypoint_extraction(results0)
+                keypoints0 = self.data_processor.extract_frame_features(results0, do_augment=False)
                 frame_path0 = os.path.join(sequence_folder_path,  f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{0}')
                 np.save(frame_path0, keypoints0)
                 self.current_frame = 0
@@ -263,7 +263,7 @@ class AddDataCameraPage(Page):
                     out.write(frame)
 
                     results, _proc = self.data_processor.image_processing(frame, self.holistic_model)
-                    keypoints = self.data_processor.keypoint_extraction(results)
+                    keypoints = self.data_processor.extract_frame_features(results, do_augment=False)
 
                     frame_path = os.path.join(sequence_folder_path, f'w_{self.word}_{keypoint_files_count + 1}_s_{self.current_sequence}_f_{frame_num}')
                     np.save(frame_path, keypoints)
