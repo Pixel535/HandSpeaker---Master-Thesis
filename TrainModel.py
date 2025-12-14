@@ -52,9 +52,9 @@ class TrainModel:
         model_path = os.path.join(model_dir, "model.keras")
         logs_path = os.path.join(model_dir, "logs")
         input_shape = (self.max_frames, self.input_dim)
-        if self.lang is "English":
+        if self.lang == "English":
             slr = self.SLR_English_Model(input_shape, self.word_labels, self.mask_value)
-        elif self.lang is "Polish":
+        elif self.lang == "Polish":
             slr = self.SLR_Polish_Model(input_shape, self.word_labels, self.mask_value)
         slr.compile_model()
 

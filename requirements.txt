@@ -1,0 +1,11 @@
+keras==3.6.0
+language_tool_python==2.8.1
+matplotlib==3.10.7
+mediapipe==0.10.18
+numpy==2.3.5
+opencv_contrib_python==4.10.0.84
+opencv_python==4.10.0.84
+opencv_python_headless==4.10.0.84
+pandas==2.3.3
+Pillow==12.0.0
+scikit_learn==1.7.2
